@@ -1,0 +1,488 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudioManfra - Demo Gestionale</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM via CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <!-- Babel (per compilare JSX nel browser) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Animazioni personalizzate -->
+  <style>
+    @keyframes slideUpFade { 
+      0% { opacity: 0; transform: translateY(15px); } 
+      100% { opacity: 1; transform: translateY(0); } 
+    }
+    @keyframes fadeInContent { 
+      from { opacity: 0; transform: translateY(5px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    .animate-slideUpFade { animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-fadeInContent { animation: fadeInContent 0.4s ease-out forwards; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- Questo div conterra' la nostra app React -->
+  <div id="root"></div>
+
+  <!-- Script React (con type="text/babel") -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Poiché usiamo Lucide via CDN e non importandolo in React, 
+    // creiamo dei semplici wrapper SVG per simulare i componenti Lucide usati nell'app originale.
+    const IconWrapper = ({ svg, className = "", size = 24, strokeWidth = 2, onClick, title }) => (
+      <span 
+        className={`inline-flex items-center justify-center ${className}`} 
+        style={{ width: size, height: size }}
+        dangerouslySetInnerHTML={{ __html: svg.replace('<svg', `<svg width="${size}" height="${size}" stroke-width="${strokeWidth}" title="${title || ''}"`) }}
+        onClick={onClick}
+      />
+    );
+
+    // Mappatura delle icone Lucide
+    const Icons = {
+      Apple: (p) => <IconWrapper svg={lucide.icons.apple.toSvg()} {...p} />,
+      Calendar: (p) => <IconWrapper svg={lucide.icons.calendar.toSvg()} {...p} />,
+      Users: (p) => <IconWrapper svg={lucide.icons.users.toSvg()} {...p} />,
+      Bell: (p) => <IconWrapper svg={lucide.icons.bell.toSvg()} {...p} />,
+      Search: (p) => <IconWrapper svg={lucide.icons.search.toSvg()} {...p} />,
+      Plus: (p) => <IconWrapper svg={lucide.icons.plus.toSvg()} {...p} />,
+      Stethoscope: (p) => <IconWrapper svg={lucide.icons.stethoscope.toSvg()} {...p} />,
+      CheckCircle2: (p) => <IconWrapper svg={lucide.icons['check-circle-2'].toSvg()} {...p} />,
+      Paperclip: (p) => <IconWrapper svg={lucide.icons.paperclip.toSvg()} {...p} />,
+      X: (p) => <IconWrapper svg={lucide.icons.x.toSvg()} {...p} />,
+      AlertCircle: (p) => <IconWrapper svg={lucide.icons['alert-circle'].toSvg()} {...p} />,
+      FileText: (p) => <IconWrapper svg={lucide.icons['file-text'].toSvg()} {...p} />,
+      ChevronRight: (p) => <IconWrapper svg={lucide.icons['chevron-right'].toSvg()} {...p} />,
+      Check: (p) => <IconWrapper svg={lucide.icons.check.toSvg()} {...p} />,
+      ZoomIn: (p) => <IconWrapper svg={lucide.icons['zoom-in'].toSvg()} {...p} />,
+      Printer: (p) => <IconWrapper svg={lucide.icons.printer.toSvg()} {...p} />,
+      Download: (p) => <IconWrapper svg={lucide.icons.download.toSvg()} {...p} />,
+      Filter: (p) => <IconWrapper svg={lucide.icons.filter.toSvg()} {...p} />,
+      Activity: (p) => <IconWrapper svg={lucide.icons.activity.toSvg()} {...p} />,
+      Droplet: (p) => <IconWrapper svg={lucide.icons.droplet.toSvg()} {...p} />,
+      Flame: (p) => <IconWrapper svg={lucide.icons.flame.toSvg()} {...p} />,
+      Utensils: (p) => <IconWrapper svg={lucide.icons.utensils.toSvg()} {...p} />
+    };
+
+    // --- MOCK DATA ---
+    const mockAppointments = [
+      { id: 1, time: '09:00', duration: 60, patient: 'Giulia Rossi', age: 34, reason: 'Prima Visita Nutrizionale', anamnesis: true, newDocs: 2, status: 'confirmed', redFlags: 'Allergia al Nichel, Lieve intolleranza al lattosio', history: [{ id: 101, title: 'Esami del sangue completi', date: '10 Apr 2026', type: 'Lab' }, { id: 102, title: 'Dieta Precedente', date: '05 Gen 2026', type: 'Doc' }] },
+      { id: 2, time: '10:30', duration: 30, patient: 'Marco Bianchi', age: 45, reason: 'Controllo Mensile', anamnesis: true, newDocs: 0, status: 'confirmed', redFlags: 'Ipertensione in trattamento', history: [{ id: 103, title: 'Piano Nutrizionale Attuale', date: '15 Mar 2026', type: 'Plan' }] },
+      { id: 3, time: '11:30', duration: 60, patient: 'Elena Verdi', age: 28, reason: 'Visita Sportiva', anamnesis: false, newDocs: 1, status: 'pending', redFlags: null, history: [{ id: 104, title: 'Bioimpedenziometria base', date: '12 Apr 2026', type: 'Bio' }] },
+    ];
+
+    const initialRequests = [
+      { id: 1, date: '18 Apr 2026', time: '15:00', patient: 'Luca Neri', phone: '+39 333 1234567', type: 'Prima Visita' },
+      { id: 2, date: '19 Apr 2026', time: '09:30', patient: 'Sofia Colombo', phone: '+39 333 9876543', type: 'Controllo' }
+    ];
+
+    const mockPatients = [
+      { id: 1, name: 'Giulia Rossi', age: 34, phone: '+39 340 1122334', lastVisit: 'Oggi', status: 'Attivo' },
+      { id: 2, name: 'Marco Bianchi', age: 45, phone: '+39 333 4455667', lastVisit: 'Oggi', status: 'Attivo' },
+      { id: 3, name: 'Elena Verdi', age: 28, phone: '+39 392 9988776', lastVisit: '10 Mar 2026', status: 'Attivo' }
+    ];
+
+    // --- APP MAIN COMPONENT ---
+    function App() {
+      const [showSplash, setShowSplash] = useState(true);
+      const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+      const [currentView, setCurrentView] = useState('dashboard');
+      const [selectedAppt, setSelectedAppt] = useState(null);
+      const [selectedDoc, setSelectedDoc] = useState(null);
+      
+      const [requests, setRequests] = useState(initialRequests);
+      const [toastMessage, setToastMessage] = useState(null);
+
+      const primaryColor = "bg-teal-800";
+      const primaryText = "text-teal-800";
+
+      const handleStart = () => {
+        setIsAnimatingOut(true);
+        setTimeout(() => setShowSplash(false), 400); 
+      };
+
+      const handleActionRequest = (id, action) => {
+        setRequests(prev => prev.filter(req => req.id !== id));
+        setToastMessage(action === 'approve' ? 'Richiesta approvata. Anamnesi inviata.' : 'Richiesta rifiutata e archiviata.');
+        setTimeout(() => setToastMessage(null), 3000);
+      };
+
+      // Toast Component
+      const Toast = () => (
+        <div className={`fixed bottom-6 right-6 bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 transition-all duration-300 z-50 ${toastMessage ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+          <Icons.CheckCircle2 size={20} className="text-teal-400" />
+          <span className="font-medium">{toastMessage}</span>
+        </div>
+      );
+
+      // Splash Screen
+      const SplashScreen = () => (
+        <div className={`fixed inset-0 z-[100] bg-[#F9FAFB] flex flex-col items-center justify-center transition-all duration-400 ease-out ${isAnimatingOut ? 'opacity-0 scale-[1.02] pointer-events-none' : 'opacity-100 scale-100'}`}>
+          <div className="flex flex-col items-center animate-slideUpFade text-center px-6">
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-teal-100/50">
+               <Icons.Apple className="text-teal-700" size={38} strokeWidth={1.5} />
+            </div>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-3">StudioManfra</h1>
+            <div className="w-8 h-0.5 bg-teal-600 rounded-full mb-3 opacity-80"></div>
+            <p className="text-teal-700/70 text-xs font-semibold tracking-[0.2em] uppercase mb-8">EHR & Gestione Studio</p>
+            <p className="text-lg md:text-xl text-slate-600 italic font-medium mb-10 max-w-sm leading-relaxed">"Sii la versione migliore di te stesso."</p>
+            <button onClick={handleStart} className={`${primaryColor} text-white px-10 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-teal-900/20 hover:bg-teal-900 hover:-translate-y-1 transition-all duration-300 flex items-center gap-2`}>
+              Inizia <Icons.ChevronRight size={20} strokeWidth={3} />
+            </button>
+          </div>
+        </div>
+      );
+
+      // Dashboard
+      const Dashboard = () => (
+        <div className="p-8 w-full max-w-6xl mx-auto animate-fadeInContent">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Calendario Odierno</h1>
+              <p className="text-gray-500">Venerdì, 17 Aprile 2026</p>
+            </div>
+            <button className={`${primaryColor} text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-teal-900 transition shadow-sm`}>
+              <Icons.Plus size={18} /> Nuovo Appuntamento
+            </button>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {mockAppointments.map((appt, idx) => (
+              <div key={appt.id} onClick={() => setSelectedAppt(appt)} className={`flex items-stretch border-b border-gray-50 hover:bg-teal-50/30 cursor-pointer transition ${idx === 0 ? 'border-l-4 border-l-teal-600' : 'border-l-4 border-l-transparent'}`}>
+                <div className="w-32 p-6 flex flex-col justify-center items-center border-r border-gray-100 bg-slate-50/50">
+                  <span className="text-lg font-semibold text-gray-800">{appt.time}</span>
+                  <span className="text-xs text-gray-500">{appt.duration} min</span>
+                </div>
+                <div className="p-6 flex-1 flex justify-between items-center">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{appt.patient}</h3>
+                      <span className="text-sm text-gray-500">{appt.age} anni</span>
+                      {appt.status === 'confirmed' ? (
+                         <span className="bg-emerald-100 text-emerald-700 text-[11px] px-2 py-0.5 rounded-md font-medium uppercase tracking-wide">Confermato</span>
+                      ) : (
+                         <span className="bg-amber-100 text-amber-700 text-[11px] px-2 py-0.5 rounded-md font-medium uppercase tracking-wide">In attesa</span>
+                      )}
+                    </div>
+                    <p className="text-gray-600 flex items-center gap-2"><Icons.Stethoscope size={16} className="text-teal-600"/> {appt.reason}</p>
+                  </div>
+                  <div className="flex gap-4">
+                    {appt.anamnesis && (
+                      <div className="flex flex-col items-center justify-center text-emerald-600" title="Anamnesi Compilata">
+                        <Icons.CheckCircle2 size={24} strokeWidth={1.5} />
+                        <span className="text-[9px] mt-1 font-semibold uppercase tracking-wider">Anamnesi</span>
+                      </div>
+                    )}
+                    {appt.newDocs > 0 && (
+                      <div className="flex flex-col items-center justify-center text-teal-600 relative" title="Nuovi Esami">
+                        <Icons.Paperclip size={24} strokeWidth={1.5} />
+                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold shadow-sm">{appt.newDocs}</span>
+                        <span className="text-[9px] mt-1 font-semibold uppercase tracking-wider">Referti</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      // SlideOver
+      const SlideOver = () => (
+        <div className={`fixed inset-0 z-40 flex justify-end transition-opacity duration-300 ${selectedAppt ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+          <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onClick={() => setSelectedAppt(null)}></div>
+          <div className={`relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col transform transition-transform duration-300 ease-out ${selectedAppt ? 'translate-x-0' : 'translate-x-full'}`}>
+            {selectedAppt && (
+              <>
+                <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-slate-50/50">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-white border border-teal-100 shadow-sm rounded-full flex items-center justify-center text-teal-800 font-bold text-xl">
+                      {selectedAppt.patient.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">{selectedAppt.patient}</h2>
+                      <p className="text-sm text-gray-500">{selectedAppt.age} anni • {selectedAppt.reason}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedAppt(null)} className="p-2 text-gray-400 hover:bg-gray-200 rounded-full transition"><Icons.X size={20} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {selectedAppt.redFlags && (
+                    <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex gap-3 items-start shadow-sm">
+                      <Icons.AlertCircle className="text-rose-600 flex-shrink-0 mt-0.5" size={20} />
+                      <div>
+                        <h4 className="text-sm font-semibold text-rose-800 mb-1">Attenzione Medica</h4>
+                        <p className="text-sm text-rose-700 leading-snug">{selectedAppt.redFlags}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-4"><Icons.FileText size={18} className={primaryText} /> Documenti & Referti</h3>
+                    <div className="space-y-3">
+                      {selectedAppt.history.map(doc => (
+                        <div key={doc.id} onClick={() => setSelectedDoc(doc)} className="group flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50 cursor-pointer transition shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white border border-gray-100 shadow-sm p-2 rounded-lg text-gray-500 group-hover:text-teal-600">
+                              {doc.type === 'Lab' ? <Icons.Droplet size={16}/> : doc.type === 'Plan' ? <Icons.Utensils size={16}/> : doc.type === 'Bio' ? <Icons.Activity size={16} /> : <Icons.FileText size={16}/>}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{doc.title}</p>
+                              <p className="text-xs text-gray-500">{doc.date}</p>
+                            </div>
+                          </div>
+                          <Icons.ChevronRight size={16} className="text-gray-300 group-hover:text-teal-600 transition" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 border-t border-gray-100 bg-white">
+                  <button onClick={() => setSelectedAppt(null)} className={`w-full ${primaryColor} text-white font-medium py-3.5 rounded-xl shadow-md hover:bg-teal-900 transition flex justify-center items-center gap-2`}>
+                    <Icons.Check size={18} /> Salva e Chiudi Visita
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+
+      // Lightbox Documenti
+      const Lightbox = () => {
+        if (!selectedDoc) return null;
+        const renderContent = () => {
+          if (selectedDoc.type === 'Bio') return (
+            <div className="w-full max-w-2xl text-left animate-fadeInContent">
+              <div className="flex items-center gap-3 mb-6 border-b pb-4"><Icons.Activity className="text-teal-600" size={28} /><h2 className="text-2xl font-bold text-gray-800">Analisi Composizione Corporea</h2></div>
+              <div className="space-y-6">
+                <div><div className="flex justify-between text-sm font-semibold mb-2"><span className="text-slate-700">Massa Grassa (FM)</span><span className="text-rose-600">24.5 %</span></div><div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden flex"><div className="bg-rose-500 h-full" style={{width: '24.5%'}}></div></div></div>
+                <div><div className="flex justify-between text-sm font-semibold mb-2"><span className="text-slate-700">Massa Magra (FFM)</span><span className="text-emerald-600">75.5 %</span></div><div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden flex"><div className="bg-emerald-500 h-full" style={{width: '75.5%'}}></div></div></div>
+                <div><div className="flex justify-between text-sm font-semibold mb-2"><span className="text-slate-700">Acqua Totale (TBW)</span><span className="text-blue-500">58.0 %</span></div><div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden flex"><div className="bg-blue-500 h-full" style={{width: '58%'}}></div></div></div>
+                <div className="mt-8 p-4 bg-teal-50 border border-teal-100 rounded-xl"><h4 className="text-sm font-bold text-teal-800 mb-2">Metabolismo Basale Stimato (BMR)</h4><p className="text-2xl font-extrabold text-teal-900">1,450 <span className="text-sm font-medium text-teal-700">kcal/giorno</span></p></div>
+              </div>
+            </div>
+          );
+          if (selectedDoc.type === 'Plan') return (
+            <div className="w-full max-w-3xl text-left animate-fadeInContent">
+              <div className="flex items-center gap-3 mb-6 border-b pb-4"><Icons.Utensils className="text-emerald-600" size={28} /><h2 className="text-2xl font-bold text-gray-800">Piano Nutrizionale - Settimana Tipo</h2></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50"><h4 className="font-bold text-slate-800 mb-2">Colazione</h4><ul className="text-sm text-slate-600 space-y-1 list-disc pl-5"><li>Yogurt Greco 0% (150g)</li><li>Fiocchi d'avena (40g)</li></ul></div>
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50"><h4 className="font-bold text-slate-800 mb-2">Spuntino</h4><ul className="text-sm text-slate-600 space-y-1 list-disc pl-5"><li>Mandorle (15g)</li></ul></div>
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 md:col-span-2"><h4 className="font-bold text-slate-800 mb-2">Pranzo</h4><ul className="text-sm text-slate-600 space-y-1 list-disc pl-5"><li>Riso basmati (70g)</li><li>Pollo ai ferri (150g)</li><li>Zucchine grigliate</li></ul></div>
+              </div>
+            </div>
+          );
+          return (
+            <div className="w-full max-w-2xl text-left animate-fadeInContent">
+              <div className="flex items-center gap-3 mb-6 border-b pb-4"><Icons.Droplet className="text-red-500" size={28} /><h2 className="text-2xl font-bold text-gray-800">Esami Ematochimici</h2></div>
+              <table className="w-full text-sm text-left"><thead className="bg-slate-100 text-slate-600"><tr><th className="p-3">Esame</th><th className="p-3">Esito</th><th className="p-3">Riferimento</th></tr></thead><tbody className="divide-y divide-slate-100">
+                <tr><td className="p-3">Glicemia</td><td className="p-3 font-bold">85 mg/dL</td><td className="p-3">70 - 100</td></tr>
+                <tr><td className="p-3">Colesterolo</td><td className="p-3 font-bold text-rose-600">210 mg/dL *</td><td className="p-3">&lt; 200</td></tr>
+              </tbody></table>
+            </div>
+          );
+        };
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/95 backdrop-blur-md animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex justify-between items-center p-4 bg-slate-900 border-b border-slate-700 text-white shadow-md">
+              <div className="flex items-center gap-4"><button onClick={() => setSelectedDoc(null)} className="p-2 hover:bg-slate-800 rounded-lg"><Icons.X size={24} /></button><div><h3 className="font-medium text-sm md:text-base">{selectedDoc.title}.pdf</h3></div></div>
+            </div>
+            <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start pt-8">
+              <div className="bg-white w-full max-w-4xl min-h-[600px] rounded-xl shadow-2xl p-8 md:p-12 flex flex-col items-center border border-gray-200">
+                 {renderContent()}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // Coda Segreteria
+      const SecretaryQueue = () => (
+        <div className="p-8 w-full max-w-6xl mx-auto animate-fadeInContent">
+          <div className="mb-8"><h1 className="text-2xl font-bold text-gray-800">Coda di Lavoro Segreteria</h1></div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 border-b border-gray-100 text-xs font-semibold text-slate-500 uppercase">
+                <tr><th className="p-4 pl-6">Data</th><th className="p-4">Paziente</th><th className="p-4">Contatto</th><th className="p-4 text-right">Azioni</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {requests.map(req => (
+                  <tr key={req.id} className="hover:bg-slate-50/50 transition">
+                    <td className="p-4 pl-6"><div className="font-semibold">{req.date}</div><div className="text-sm text-gray-500">{req.time}</div></td>
+                    <td className="p-4 font-medium">{req.patient}</td>
+                    <td className="p-4 text-gray-600">{req.phone}</td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => handleActionRequest(req.id, 'approve')} className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-500 hover:text-white border border-emerald-100"><Icons.Check size={16}/></button>
+                        <button onClick={() => handleActionRequest(req.id, 'reject')} className="w-9 h-9 rounded-full bg-white text-gray-400 flex items-center justify-center hover:bg-gray-100 hover:text-gray-700 border border-gray-200"><Icons.X size={16}/></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {requests.length === 0 && <div className="p-12 text-center text-gray-500">Nessuna richiesta in sospeso.</div>}
+          </div>
+        </div>
+      );
+
+      // Pazienti View
+      const PatientsView = () => (
+        <div className="p-8 w-full max-w-6xl mx-auto animate-fadeInContent">
+          <div className="mb-8"><h1 className="text-2xl font-bold text-gray-800">Archivio Pazienti</h1></div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 border-b border-gray-100 text-xs font-semibold text-slate-500 uppercase">
+                <tr><th className="p-4 pl-6">Nome Paziente</th><th className="p-4">Contatto</th><th className="p-4">Età</th><th className="p-4 text-right">Stato</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {mockPatients.map(patient => (
+                  <tr key={patient.id} className="hover:bg-teal-50/30 transition">
+                    <td className="p-4 pl-6 font-semibold">{patient.name}</td>
+                    <td className="p-4 text-sm text-gray-600">{patient.phone}</td>
+                    <td className="p-4 text-sm text-gray-600">{patient.age} anni</td>
+                    <td className="p-4 text-right">{patient.status === 'Attivo' ? <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-semibold">Attivo</span> : <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-semibold">Inattivo</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+
+      // Booking Widget
+      const BookingWidget = () => {
+        const [step, setStep] = useState(1);
+        const [service, setService] = useState('Prima Visita Nutrizionale');
+        const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+
+        const handleSubmit = () => {
+          if (!formData.name || !formData.phone) {
+            setToastMessage("Inserisci almeno Nome e Cellulare");
+            setTimeout(() => setToastMessage(null), 3000);
+            return;
+          }
+          const newRequest = { id: Date.now(), date: 'Oggi', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), patient: formData.name, phone: formData.phone, type: service.includes('Prima') ? 'Prima Visita' : 'Controllo' };
+          setRequests(prev => [newRequest, ...prev]);
+          setToastMessage(`Nuova richiesta web ricevuta da ${formData.name}`);
+          setTimeout(() => setToastMessage(null), 4000);
+          setStep(2);
+        };
+
+        return (
+          <div className="flex-1 flex items-center justify-center bg-slate-100 p-4 animate-fadeInContent">
+            <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200/60">
+              <div className={`${primaryColor} p-8 text-white text-center flex flex-col items-center relative overflow-hidden`}>
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-teal-700 rounded-full blur-2xl opacity-50"></div>
+                <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 border border-white/20 shadow-inner z-10"><Icons.Apple className="text-white" size={32} /></div>
+                <h2 className="text-2xl font-bold tracking-tight z-10">StudioManfra</h2>
+              </div>
+              <div className="p-6 md:p-8 space-y-6 min-h-[400px]">
+                {step === 1 ? (
+                  <div className="animate-fadeInContent">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block">1. Seleziona Prestazione</label>
+                      <div className="space-y-3">
+                        <label onClick={() => setService('Prima Visita Nutrizionale')} className={`flex items-center justify-between p-4 border-2 rounded-2xl cursor-pointer transition ${service === 'Prima Visita Nutrizionale' ? 'border-teal-600 bg-teal-50' : 'border-slate-100 hover:border-slate-300'}`}>
+                          <div><span className={`font-semibold block ${service === 'Prima Visita Nutrizionale' ? 'text-teal-900' : 'text-slate-700'}`}>Prima Visita Nutrizionale</span></div>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${service === 'Prima Visita Nutrizionale' ? 'bg-teal-600 text-white' : 'border-2 border-slate-200'}`}>{service === 'Prima Visita Nutrizionale' && <Icons.Check size={14} strokeWidth={3}/>}</div>
+                        </label>
+                        <label onClick={() => setService('Visita di Controllo')} className={`flex items-center justify-between p-4 border-2 rounded-2xl cursor-pointer transition ${service === 'Visita di Controllo' ? 'border-teal-600 bg-teal-50' : 'border-slate-100 hover:border-slate-300'}`}>
+                          <div><span className={`font-semibold block ${service === 'Visita di Controllo' ? 'text-teal-900' : 'text-slate-700'}`}>Visita di Controllo</span></div>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${service === 'Visita di Controllo' ? 'bg-teal-600 text-white' : 'border-2 border-slate-200'}`}>{service === 'Visita di Controllo' && <Icons.Check size={14} strokeWidth={3}/>}</div>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="mt-6">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block">2. I tuoi Dati</label>
+                      <div className="space-y-3">
+                        <input type="text" placeholder="Nome e Cognome" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500" />
+                        <input type="tel" placeholder="Cellulare" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                    </div>
+                    <button onClick={handleSubmit} className={`w-full ${primaryColor} text-white font-bold py-4 rounded-2xl shadow-lg mt-6`}>Invia Richiesta</button>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-slideUpFade bg-white rounded-b-[2rem]">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-500 mb-6"><Icons.CheckCircle2 size={40} /></div>
+                    <h3 className="text-2xl font-bold text-slate-800 mb-2">Richiesta Inviata!</h3>
+                    <button onClick={() => {setFormData({name:'', phone:''}); setStep(1);}} className="mt-8 px-6 py-3 bg-slate-100 text-slate-600 font-semibold rounded-xl hover:bg-slate-200 transition">Nuova richiesta</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // Render Layout
+      return (
+        <React.Fragment>
+          {showSplash && <SplashScreen />}
+          <div className="flex h-screen bg-[#F9FAFB] font-sans text-gray-900">
+            {/* Sidebar */}
+            <nav className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex z-10">
+              <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-teal-800 text-white flex items-center justify-center"><Icons.Apple size={16} /></div>
+                <span className="font-bold text-xl text-slate-800">StudioManfra</span>
+              </div>
+              <div className="p-4 flex-1 space-y-1">
+                <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 mt-4">Gestione</p>
+                <button onClick={() => setCurrentView('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${currentView === 'dashboard' ? 'bg-teal-50 text-teal-800 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.Calendar size={18} /> Dashboard</button>
+                <button onClick={() => setCurrentView('secretary')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${currentView === 'secretary' ? 'bg-teal-50 text-teal-800 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.Bell size={18} /> Coda Segreteria {requests.length > 0 && <span className="ml-auto bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">{requests.length}</span>}</button>
+                <button onClick={() => setCurrentView('patients')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${currentView === 'patients' ? 'bg-teal-50 text-teal-800 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}><Icons.Users size={18} /> Pazienti</button>
+                <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 mt-8">Test</p>
+                <button onClick={() => setCurrentView('widget')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${currentView === 'widget' ? 'bg-slate-800 text-white font-semibold' : 'text-slate-600 hover:bg-slate-100 border border-slate-200'}`}><Icons.Search size={18} /> Widget Paziente</button>
+              </div>
+            </nav>
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+              <div className="md:hidden p-4 bg-white border-b border-gray-200 flex justify-between items-center z-10">
+                <div className="flex items-center gap-2"><div className="bg-teal-50 p-1.5 rounded-md"><Icons.Apple className="text-teal-800" size={16} /></div><span className="font-bold text-slate-800">StudioManfra</span></div>
+                <select value={currentView} onChange={(e) => setCurrentView(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none font-medium">
+                  <option value="dashboard">Dashboard</option>
+                  <option value="secretary">Segreteria</option>
+                  <option value="patients">Pazienti</option>
+                  <option value="widget">Widget</option>
+                </select>
+              </div>
+              <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
+                {currentView === 'dashboard' && <Dashboard />}
+                {currentView === 'secretary' && <SecretaryQueue />}
+                {currentView === 'patients' && <PatientsView />}
+                {currentView === 'widget' && <BookingWidget />}
+              </div>
+            </main>
+
+            <SlideOver />
+            <Lightbox />
+            <Toast />
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    // Renderizza l'App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
+``
